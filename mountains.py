@@ -27,9 +27,9 @@ class Fetch():
     self.request   = None
 
     if self.url:
-      self.request = self.get_request(self.url)
+      self.request = self.get(self.url)
 
-  def get_request(self, url):
+  def get(self, url):
     return requests.get(url, data={'track': 'requests'}, stream=self.is_stream)
 
   
@@ -38,37 +38,24 @@ class Stream(Fetch):
     Fetch.__init__(self,url)
     self.is_stream = True
 
-  def stream(self):
-    raise NotImplementedError
-
-class MountainAltStream(Stream):
-  def stream(self):
-    
+  def __iter__(self):
     for line in self.request.iter_lines():
       if line:
-        yield count, line
+        yield line
+
+
+class MountainAltStream():
+
+  def __init__(self):
+    csv_reader = csv.reader()
+    
+    
 
 
 def header():
   current_time = datetime.datetime.now()
   return current_time.strftime("%Y-%m-%d %H:%M:%S (%A)\n")
 
-
-
-def fetch_csv(url):
-
-  stream = MountainAltStream(url)
-  stream.stream()
-
-  # print stream.stream()
-
-  # mas.stream()
-  # for line in mas.stream():
-    # print list(csv.reader(line))  
-    # print line
-
-def mountains():
-  yield iter([['Me', 'You'], ['293', '219'], ['54', '13']])
 
 def execute((options, args)):
 
@@ -78,7 +65,9 @@ def execute((options, args)):
 
   print header()
 
-  fetch_csv(args[0])
+  m_stream = Stream(args[0])
+  for m in m_stream:
+    print m
 
   # https://s3.amazonaws.com/miscs.random/mountains-1.csv
 
