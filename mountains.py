@@ -12,6 +12,37 @@ from optparse import OptionParser
 import requests
 
 
+class CSVParser():
+    DELIM = u','
+    REGEX = re.compile(r"%s" % DELIM, re.UNICODE)
+
+    def __init__(self, head=None):
+        if head:
+            self.head = self.REGEX.split(head)
+        else:
+            self.head = None
+
+    def parse(self, document):
+        raise NotImplementedError
+
+    def parse_line(self, line):
+        result = {}
+
+        data = self.REGEX.split(line)
+
+        for idx, val in enumerate(data):
+            if self.head:
+                result[self.head[idx]] = val
+            else:
+                result[str(idx)] = val
+
+        return result
+
+    
+
+        
+
+
 class Formatter():
     def format(self, data):
         raise NotImplementedError
@@ -48,25 +79,25 @@ class Stream(Fetch):
                 yield unicode(line)
 
     def next(self):
-        self.stream.next()
+        return self.stream.next()
 
 
 class MountainTask():
     def execute(self, stream):
-        DELIM = u','
+        
         NULL = u"null"
         UKNOWN = u'unknown'
+        ALTITUDE = 'Altitude (m)'
+        NAME = 'Name'
 
         formatter = MountainAltFormatter()
-
-        # Skip header
-        stream.next()
-        for mountain in stream:
-            regex = re.compile(r"%s" % DELIM, re.UNICODE)
-            data = regex.split(mountain)
-
-            name = data[1]
-            altitude = data[5] if data[5] != NULL else UKNOWN
+        csv_parser = CSVParser(stream.next())
+        
+        for mountain_data in stream:
+            data = csv_parser.parse_line(mountain_data)
+        
+            name = data[NAME]
+            altitude = data[ALTITUDE] if data[ALTITUDE] != NULL else UKNOWN
             sys.stdout.write("%s\n" % formatter.format([name, altitude]))
 
 
