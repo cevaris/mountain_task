@@ -11,8 +11,7 @@ from optparse import OptionParser
 
 import requests
 
-UTF8  = 'UTF-8'
-UTF16 = 'UTF-16'
+
 
 class Formatter():
   def format(self,data):
@@ -28,18 +27,12 @@ class Fetch():
     self.url       = url
     self.is_stream = False
     self.request   = None
-    self.unicode   = UTF8
 
     if self.url:
       self.get(self.url)
 
   def get(self, url):
     self.request = requests.get(url, data={'track': 'requests'}, stream=self.is_stream)
-    self.unicode = self.request.encoding 
-    print type(self.request.text), self.unicode
-
-
-
   
 class Stream(Fetch):
   def __init__(self, url=None):
@@ -62,22 +55,21 @@ class MountainTask():
   
 
   def execute(self, stream):
-    DELIM = ','
+    DELIM  = u','
+    NULL   = u"null"
+    UKNOWN = u'unknown'
+
     formatter = MountainAltFormatter()
+
 
     stream.next() # Skip header
     for mountain in stream:
-      # print mountain
-      # print type(mountain), isinstance(mountain, unicode), mountain
-      # data = mountain.split(DELIM)
-      regex = re.compile(r',',re.UNICODE)
+      regex = re.compile( r"%s" % DELIM, re.UNICODE )
       data = regex.split(mountain)
 
-      print type(mountain), mountain, data
-      # print data
-      # name     = data[1]
-      # altitude = data[5] if data[5] != 'null' or data[5] != u"null" else 'uknown'
-      # print formatter.format([name,altitude])
+      name     = data[1]
+      altitude = data[5] if data[5] != NULL else UKNOWN
+      sys.stdout.write("%s\n" % formatter.format([name,altitude]))
     
 
 
@@ -85,38 +77,16 @@ class MountainTask():
 
 def header():
   current_time = datetime.datetime.now()
-  return current_time.strftime("%Y-%m-%d %H:%M:%S (%A)\n")
+  return current_time.strftime(u"%Y-%m-%d %H:%M:%S (%A)\n")
 
 
 def execute((options, args)):
-
-  
-  # print f.format(["test",'2423'])
-  # print f.format(["1test",'uknown'])
 
   print header()
 
   mountain_stream = Stream(args[0])
   mountains = MountainTask()
   mountains.execute(mountain_stream)
-
-
-
-  
-
-  
-
-  # https://s3.amazonaws.com/miscs.random/mountains-1.csv
-
-  # writer = csv.writer(sys.stdout, delimiter=',')
-  # for mountain in fetch_csv(args[0]):
-  #   writer.writerows(mountain)
-
-
-
-
-
-
 
 
 
