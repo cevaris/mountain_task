@@ -187,10 +187,11 @@ class MountainTask(Task):
 
     def execute(self):
         
-        thread_pool = ThreadPool(20)        
+        
         self.csv_parser = CSVParser(self.stream.next())
         
-        max_count = 100
+        thread_pool = ThreadPool(25)        
+        max_count = 1000
         batch_count = 0
         batch = []
         for mountain_data in self.stream:
@@ -203,9 +204,7 @@ class MountainTask(Task):
         
             # name = data[NAME]
             # altitude = data[ALTITUDE] if data[ALTITUDE] != NULL else UKNOWN
-            # print self.formatter.format([name, altitude])
             # sys.stdout.write("%s\n" % self.formatter.format([name, altitude]))
-            # sys.stdout.flush()
 
         # Flush out the last of the batched data
         thread_pool.add_task(self.output, batch)
@@ -227,6 +226,4 @@ if __name__ == "__main__":
     parser = OptionParser()
     usage = "usage: %prog [options] URL"
 
-    start_time = time.time()
     main(parser.parse_args())
-    print time.time() - start_time, "seconds"
