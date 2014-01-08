@@ -164,38 +164,50 @@ UKNOWN = u'unknown'
 
 
 class MountainTask(Task):
-    
+
     def __init__(self, stream):
         self.stream = stream
         self.formatter = MountainAltFormatter()
         self.execute()
         
+    def output(self, batch_messages):
 
-    def output(self, message):
-
-        data = self.csv_parser.parse_line(message)
+        report = []
+        for message in batch_messages:
+            data = self.csv_parser.parse_line(message)
+            
+            name = data[NAME]
+            altitude = data[ALTITUDE] if data[ALTITUDE] != NULL else UKNOWN
+            # sys.stdout.write("%s\n" % self.formatter.format([name, altitude]))
+            # print "%s - %s" % (threading.current_thread().name, self.formatter.format([name, altitude]))
+            report.append("%s - %s\n" % (threading.current_thread().name, self.formatter.format([name, altitude])))
         
-        name = data[NAME]
-        altitude = data[ALTITUDE] if data[ALTITUDE] != self.NULL else self.UKNOWN
-        # sys.stdout.write("%s\n" % self.formatter.format([name, altitude]))
-        sys.stdout.write("%s - %s\n" % (threading.current_thread().name, self.formatter.format([name, altitude])))
-
+        sys.stdout.write("".join(report))
 
     def execute(self):
         
-        # thread_pool = ThreadPool(20)        
+        thread_pool = ThreadPool(20)        
         self.csv_parser = CSVParser(self.stream.next())
         
+        max_count = 5
+        batch_count = 0
+        batch = []
         for mountain_data in self.stream:
-            # thread_pool.add_task(self.output, mountain_data)
-            data = self.csv_parser.parse_line(mountain_data)
+            batch.append(mountain_data)
+            
+            if len(batch) > max_count:
+                thread_pool.add_task(self.output, batch)
+                batch = []
+            # data = self.csv_parser.parse_line(mountain_data)
         
-            name = data[NAME]
-            altitude = data[ALTITUDE] if data[ALTITUDE] != NULL else UKNOWN
-            print self.formatter.format([name, altitude])
+            # name = data[NAME]
+            # altitude = data[ALTITUDE] if data[ALTITUDE] != NULL else UKNOWN
+            # print self.formatter.format([name, altitude])
             # sys.stdout.write("%s\n" % self.formatter.format([name, altitude]))
             # sys.stdout.flush()
-        # thread_pool.wait_completion()
+        thread_pool.add_task(self.output, batch)
+
+        thread_pool.wait_completion()
 
 
 def header():
