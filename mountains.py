@@ -165,52 +165,45 @@ NULL = u"null"
 UKNOWN = u'unknown'
 
 
+class BatchWriter():
+    def __init__(self):
+        self.batch = []
+        self.batch_size = 5
+
+    def append(self, element):
+        self.batch.append(element)
+
+        if len(self.batch) == self.batch_size:
+            self.flush()
+            self.batch = []
+
+    def flush(self):
+        sys.stdout.write("".join(self.batch))
+
+
+
 class MountainTask(Task):
 
     def __init__(self, stream):
         self.stream = stream
         self.formatter = MountainAltFormatter()
         self.csv_parser = CSVParser()
+        self.batch_writer = BatchWriter()
         self.execute()
-        
-    def output(self, batch_messages):
-
-        report = []
-        for message in batch_messages:
-            data = self.csv_parser.parse_line(message)
-            
-            name = data[NAME]
-            altitude = data[ALTITUDE] if data[ALTITUDE] != NULL else UKNOWN
-            # sys.stdout.write("%s\n" % self.formatter.format([name, altitude]))
-            # print "%s - %s" % (threading.current_thread().name, self.formatter.format([name, altitude]))
-            report.append("%s - %s\n" % (threading.current_thread().name, self.formatter.format([name, altitude])))
-        
-        sys.stdout.write("".join(report))
 
     def execute(self):
         
         self.csv_parser.set_header(self.stream.next())
         
-        
-        thread_pool = ThreadPool(25)        
-        max_count = 1000
-        batch_count = 0
-        batch = []
         for mountain_data in self.stream:
-            batch.append(mountain_data)
-            
-            if len(batch) > max_count:
-                thread_pool.add_task(self.output, batch)
-                batch = []
-            # data = self.csv_parser.parse_line(mountain_data)
-        
-            # name = data[NAME]
-            # altitude = data[ALTITUDE] if data[ALTITUDE] != NULL else UKNOWN
-            # sys.stdout.write("%s\n" % self.formatter.format([name, altitude]))
 
-        # Flush out the last of the batched data
-        thread_pool.add_task(self.output, batch)
-        thread_pool.wait_completion()
+            data = self.csv_parser.parse_line(mountain_data)
+       
+            name = data[NAME]
+            altitude = data[ALTITUDE] if data[ALTITUDE] != NULL else UKNOWN
+            self.batch_writer.append("%s\n" % self.formatter.format([name, altitude]))
+
+        self.batch_writer.flush()
 
 
 def header():
