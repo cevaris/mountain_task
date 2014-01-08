@@ -3,7 +3,6 @@
 
 import os
 import sys
-import csv
 import datetime
 import re
 import string
@@ -14,13 +13,17 @@ import time
 from optparse import OptionParser
 from Queue import Queue
 from threading import Thread
-import threading
 
 
 import requests
 
 logging.basicConfig(level=logging.ERROR)
-logger = logging.getLogger("Mountains")
+
+LOG = logging.getLogger("Mountains")
+ALTITUDE = 'Altitude (m)'
+NAME = 'Name'
+NULL = u"null"
+UKNOWN = u'unknown'
 
 class Worker(Thread):
     """
@@ -121,14 +124,18 @@ class RequestsFetch(Fetch):
 
     def get(self, url):
         self.url = url
-        self.request = requests.get(url, stream=self.is_stream)
-
+        
         try:
+            self.request = requests.get(url, stream=self.is_stream)        
             self.request.raise_for_status()
         except requests.exceptions.HTTPError as e:
-            logger.error("HTTP Error [%s] [%s]\n" % (e, self.url))
+            LOG.error("HTTP Error %s: %s" % (self.request.status_code, self.url))
+            raise
+        except requests.exceptions.ConnectionError as e:
+            LOG.error("Connection Error: %s" % self.url)
             raise
 
+        return self.request
 
 
 class Stream(RequestsFetch):
@@ -151,19 +158,20 @@ class Stream(RequestsFetch):
 
 
 class BatchWriter():
+    BATCH_SIZE = 1024
+
     def __init__(self):
         self.batch = []
-        self.batch_size = 1024
 
     def append(self, element):
         self.batch.append(element)
 
-        if len(self.batch) == self.batch_size:
+        if len(self.batch) == self.BATCH_SIZE:
             self.flush()
             self.batch = []
 
     def flush(self):
-        sys.stdout.write("".join(self.batch))
+        sys.stdout.write("\n".join(self.batch))
 
 
 class Task(object):
@@ -175,10 +183,7 @@ class Task(object):
         pass
 
 
-ALTITUDE = 'Altitude (m)'
-NAME = 'Name'
-NULL = u"null"
-UKNOWN = u'unknown'
+
 
 class MountainTask(Task):
 
@@ -190,7 +195,9 @@ class MountainTask(Task):
         self.execute()
 
     def execute(self):
-        
+        """
+        Parses and prints out CSV Mountain data in a formatted manner.
+        """
         self.csv_parser.set_header(self.stream.next())
         
         for mountain_data in self.stream:
@@ -199,7 +206,7 @@ class MountainTask(Task):
        
             name = data[NAME]
             altitude = data[ALTITUDE] if data[ALTITUDE] != NULL else UKNOWN
-            self.batch_writer.append("%s\n" % self.formatter.format([name, altitude]))
+            self.batch_writer.append("%s" % self.formatter.format([name, altitude]))
 
         self.batch_writer.flush()
 
