@@ -8,14 +8,20 @@ import datetime
 import re
 import string
 import logging
+import abc
 from optparse import OptionParser
 
 import requests
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger("Mountains")
 
 class CSVParser(object):
+    """
+    Given string of CSV format, maps the header data to the value.
+    Result is a dictionary of CSV header name -> column value.
+    """
+
     DELIM = u','
     REGEX = re.compile(r"%s" % DELIM, re.UNICODE)
 
@@ -41,9 +47,14 @@ class CSVParser(object):
         return result
 
 
+
 class Formatter(object):
+    """Base class for creating custom string formats"""
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
     def format(self, data):
-        raise NotImplementedError
+        """Return formatted string given an array of data"""
 
 
 class MountainAltFormatter(Formatter):
@@ -51,14 +62,20 @@ class MountainAltFormatter(Formatter):
         return "%s has an altitude of %s meters." % (data[0], data[1])
 
 class Fetch(object):
+    """Interface for making HTTP GET commands to a given URL"""
+    __metaclass__ = abc.ABCMeta
+
     def __init__(self, url=None):
         self.url = url
 
+    @abc.abstractmethod
     def get(self, url):
-        raise NotImplementedError
+        """Fetch data from provided URL"""
 
 
 class RequestsFetch(Fetch):
+    """Python Requests implementation of Fetch interface"""
+
     def __init__(self, url=None):
         Fetch.__init__(self, url)
         self.is_stream = False
@@ -74,18 +91,21 @@ class RequestsFetch(Fetch):
         try:
             self.request.raise_for_status()
         except requests.exceptions.HTTPError as e:
-            logger.error("HTTP Error %s for URL '%s'\n" % (e, self.url))
+            logger.error("HTTP Error [%s] [%s]\n" % (e, self.url))
             raise
 
 
 
 class Stream(RequestsFetch):
+    """"Stream implementation of RequestsFetch"""
+
     def __init__(self, url=None):
         RequestsFetch.__init__(self, url)
         self.is_stream = True
         self.stream = self.request.iter_lines()
 
     def __iter__(self):
+        """Generator for streaming each line of Requests.GET"""
         for line in self.stream:
             if line:
                 yield unicode(line)
@@ -95,8 +115,12 @@ class Stream(RequestsFetch):
 
 
 class Task(object):
+    """Base class for modularizing general tasks"""
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
     def execute(self):
-        raise NotImplementedError
+        pass
 
 
 class MountainTask(Task):
