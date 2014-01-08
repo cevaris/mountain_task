@@ -17,7 +17,7 @@ class CSVParser():
     REGEX = re.compile(r"%s" % DELIM, re.UNICODE)
 
     def __init__(self, head=None):
-        if head:
+        if head and (type(head) == str):
             self.head = self.REGEX.split(head)
         else:
             self.head = None
@@ -27,14 +27,13 @@ class CSVParser():
 
     def parse_line(self, line):
         result = {}
-
         data = self.REGEX.split(line)
 
-        for idx, val in enumerate(data):
+        for index, value in enumerate(data):
             if self.head:
-                result[self.head[idx]] = val
+                result[self.head[index]] = value
             else:
-                result[str(idx)] = val
+                result[str(index)] = value
 
         return result
 
@@ -82,8 +81,18 @@ class Stream(Fetch):
         return self.stream.next()
 
 
-class MountainTask():
-    def execute(self, stream):
+class Task():
+    def execute(self):
+        raise NotImplementedError
+
+
+class MountainTask(Task):
+
+    def __init__(self, stream):
+        self.stream = stream
+        self.execute()
+
+    def execute(self):
         
         NULL = u"null"
         UKNOWN = u'unknown'
@@ -91,9 +100,9 @@ class MountainTask():
         NAME = 'Name'
 
         formatter = MountainAltFormatter()
-        csv_parser = CSVParser(stream.next())
+        csv_parser = CSVParser(self.stream.next())
         
-        for mountain_data in stream:
+        for mountain_data in self.stream:
             data = csv_parser.parse_line(mountain_data)
         
             name = data[NAME]
@@ -110,8 +119,7 @@ def main((options, args)):
     print header()
 
     mountain_stream = Stream(args[0])
-    mountains = MountainTask()
-    mountains.execute(mountain_stream)
+    mountains = MountainTask(mountain_stream)
 
 if __name__ == "__main__":
     parser = OptionParser()
