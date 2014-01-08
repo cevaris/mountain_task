@@ -7,12 +7,15 @@ import csv
 import datetime
 import re
 import string
+import logging
 from optparse import OptionParser
 
 import requests
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("Mountains")
 
-class CSVParser():
+class CSVParser(object):
     DELIM = u','
     REGEX = re.compile(r"%s" % DELIM, re.UNICODE)
 
@@ -37,12 +40,8 @@ class CSVParser():
 
         return result
 
-    
 
-        
-
-
-class Formatter():
+class Formatter(object):
     def format(self, data):
         raise NotImplementedError
 
@@ -51,10 +50,17 @@ class MountainAltFormatter(Formatter):
     def format(self, data):
         return "%s has an altitude of %s meters." % (data[0], data[1])
 
-
-class Fetch():
+class Fetch(object):
     def __init__(self, url=None):
         self.url = url
+
+    def get(self, url):
+        raise NotImplementedError
+
+
+class RequestsFetch(Fetch):
+    def __init__(self, url=None):
+        Fetch.__init__(self, url)
         self.is_stream = False
         self.request = None
 
@@ -65,10 +71,17 @@ class Fetch():
         self.url = url
         self.request = requests.get(url, stream=self.is_stream)
 
+        try:
+            self.request.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            logger.error("HTTP Error %s for URL '%s'\n" % (e, self.url))
+            raise
 
-class Stream(Fetch):
+
+
+class Stream(RequestsFetch):
     def __init__(self, url=None):
-        Fetch.__init__(self, url)
+        RequestsFetch.__init__(self, url)
         self.is_stream = True
         self.stream = self.request.iter_lines()
 
@@ -81,7 +94,7 @@ class Stream(Fetch):
         return self.stream.next()
 
 
-class Task():
+class Task(object):
     def execute(self):
         raise NotImplementedError
 
