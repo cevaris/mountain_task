@@ -70,7 +70,10 @@ class MountainTask():
       # print mountain
       # print type(mountain), isinstance(mountain, unicode), mountain
       # data = mountain.split(DELIM)
-      print type(mountain), mountain
+      regex = re.compile(r',',re.UNICODE)
+      data = regex.split(mountain)
+
+      print type(mountain), mountain, data
       # print data
       # name     = data[1]
       # altitude = data[5] if data[5] != 'null' or data[5] != u"null" else 'uknown'
