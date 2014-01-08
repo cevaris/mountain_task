@@ -145,7 +145,7 @@ class BatchWriter():
             self.batch = []
 
     def flush(self):
-        sys.stdout.write("\n".join(self.batch))
+        sys.stdout.write("".join(self.batch))
 
 
 class Task(object):
@@ -181,7 +181,7 @@ class MountainTask(Task):
        
             name = data[NAME]
             altitude = data[ALTITUDE] if data[ALTITUDE] != NULL else UKNOWN
-            self.batch_writer.append("%s" % self.formatter.format([name, altitude]))
+            self.batch_writer.append("%s\n" % self.formatter.format([name, altitude]))
 
         # Write out any remainder items to stdout
         self.batch_writer.flush()
