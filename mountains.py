@@ -150,6 +150,22 @@ class Stream(RequestsFetch):
         return self.stream.next()
 
 
+class BatchWriter():
+    def __init__(self):
+        self.batch = []
+        self.batch_size = 1024
+
+    def append(self, element):
+        self.batch.append(element)
+
+        if len(self.batch) == self.batch_size:
+            self.flush()
+            self.batch = []
+
+    def flush(self):
+        sys.stdout.write("".join(self.batch))
+
+
 class Task(object):
     """Base class for modularizing general tasks"""
     __metaclass__ = abc.ABCMeta
@@ -163,24 +179,6 @@ ALTITUDE = 'Altitude (m)'
 NAME = 'Name'
 NULL = u"null"
 UKNOWN = u'unknown'
-
-
-class BatchWriter():
-    def __init__(self):
-        self.batch = []
-        self.batch_size = 5
-
-    def append(self, element):
-        self.batch.append(element)
-
-        if len(self.batch) == self.batch_size:
-            self.flush()
-            self.batch = []
-
-    def flush(self):
-        sys.stdout.write("".join(self.batch))
-
-
 
 class MountainTask(Task):
 
