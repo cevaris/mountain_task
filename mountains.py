@@ -114,12 +114,8 @@ class RequestsFetch(Fetch):
     """Python Requests implementation of Fetch interface"""
 
     def __init__(self, url=None):
-        Fetch.__init__(self, url)
+        self.url = url
         self.is_stream = False
-        self.request = None
-
-        if self.url:
-            self.get(self.url)
 
     def get(self, url):
         self.url = url
@@ -137,9 +133,10 @@ class Stream(RequestsFetch):
     """"Stream implementation of RequestsFetch"""
 
     def __init__(self, url=None):
-        RequestsFetch.__init__(self, url)
         self.is_stream = True
+        self.get(url)
         self.stream = self.request.iter_lines()
+
 
     def __iter__(self):
         """Generator for streaming each line of Requests.GET"""
@@ -160,11 +157,14 @@ class Task(object):
         pass
 
 
+ALTITUDE = 'Altitude (m)'
+NAME = 'Name'
+NULL = u"null"
+UKNOWN = u'unknown'
+
+
 class MountainTask(Task):
-
-    NULL = u"null"
-    UKNOWN = u'unknown'    
-
+    
     def __init__(self, stream):
         self.stream = stream
         self.formatter = MountainAltFormatter()
@@ -172,8 +172,6 @@ class MountainTask(Task):
         
 
     def output(self, message):
-        ALTITUDE = 'Altitude (m)'
-        NAME = 'Name'
 
         data = self.csv_parser.parse_line(message)
         
@@ -189,16 +187,14 @@ class MountainTask(Task):
         self.csv_parser = CSVParser(self.stream.next())
         
         for mountain_data in self.stream:
-            print mountain_data
-            sys.stdout.flush()
-            # # thread_pool.add_task(self.output, mountain_data)
-            # data = self.csv_parser.parse_line(mountain_data)
+            # thread_pool.add_task(self.output, mountain_data)
+            data = self.csv_parser.parse_line(mountain_data)
         
-            # name = data[NAME]
-            # altitude = data[ALTITUDE] if data[ALTITUDE] != NULL else UKNOWN
-            # print self.formatter.format([name, altitude])
-            # # sys.stdout.write("%s\n" % self.formatter.format([name, altitude]))
-            # # sys.stdout.flush()
+            name = data[NAME]
+            altitude = data[ALTITUDE] if data[ALTITUDE] != NULL else UKNOWN
+            print self.formatter.format([name, altitude])
+            # sys.stdout.write("%s\n" % self.formatter.format([name, altitude]))
+            # sys.stdout.flush()
         # thread_pool.wait_completion()
 
 
