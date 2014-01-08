@@ -9,12 +9,49 @@ import re
 import string
 import logging
 import abc
+
 from optparse import OptionParser
+from Queue import Queue
+from threading import Thread
+import threading
+
 
 import requests
 
 logging.basicConfig(level=logging.ERROR)
 logger = logging.getLogger("Mountains")
+
+class Worker(Thread):
+    """
+    Thread executing tasks from a given tasks queue
+    """
+    def __init__(self, tasks):
+        Thread.__init__(self)
+        self.tasks = tasks
+        self.daemon = True
+        self.start()
+    
+    def run(self):
+        while True:
+            func, args, kargs = self.tasks.get()
+            try: func(*args, **kargs)
+            except Exception, e: print e
+            self.tasks.task_done()
+
+class ThreadPool:
+    """Pool of threads consuming tasks from a queue"""
+    def __init__(self, num_threads):
+        self.tasks = Queue(num_threads)
+        for _ in range(num_threads): Worker(self.tasks)
+
+    def add_task(self, func, *args, **kargs):
+        """Add a task to the queue"""
+        self.tasks.put((func, args, kargs))
+
+    def wait_completion(self):
+        """Wait for completion of all the tasks in the queue"""
+        self.tasks.join()
+
 
 class CSVParser(object):
     """
@@ -125,26 +162,44 @@ class Task(object):
 
 class MountainTask(Task):
 
+    NULL = u"null"
+    UKNOWN = u'unknown'    
+
     def __init__(self, stream):
         self.stream = stream
+        self.formatter = MountainAltFormatter()
         self.execute()
-
-    def execute(self):
         
-        NULL = u"null"
-        UKNOWN = u'unknown'
+
+    def output(self, message):
         ALTITUDE = 'Altitude (m)'
         NAME = 'Name'
 
-        formatter = MountainAltFormatter()
-        csv_parser = CSVParser(self.stream.next())
+        data = self.csv_parser.parse_line(message)
+        
+        name = data[NAME]
+        altitude = data[ALTITUDE] if data[ALTITUDE] != self.NULL else self.UKNOWN
+        # sys.stdout.write("%s\n" % self.formatter.format([name, altitude]))
+        sys.stdout.write("%s - %s\n" % (threading.current_thread().name, self.formatter.format([name, altitude])))
+
+
+    def execute(self):
+        
+        # thread_pool = ThreadPool(20)        
+        self.csv_parser = CSVParser(self.stream.next())
         
         for mountain_data in self.stream:
-            data = csv_parser.parse_line(mountain_data)
+            print mountain_data
+            sys.stdout.flush()
+            # # thread_pool.add_task(self.output, mountain_data)
+            # data = self.csv_parser.parse_line(mountain_data)
         
-            name = data[NAME]
-            altitude = data[ALTITUDE] if data[ALTITUDE] != NULL else UKNOWN
-            sys.stdout.write("%s\n" % formatter.format([name, altitude]))
+            # name = data[NAME]
+            # altitude = data[ALTITUDE] if data[ALTITUDE] != NULL else UKNOWN
+            # print self.formatter.format([name, altitude])
+            # # sys.stdout.write("%s\n" % self.formatter.format([name, altitude]))
+            # # sys.stdout.flush()
+        # thread_pool.wait_completion()
 
 
 def header():
