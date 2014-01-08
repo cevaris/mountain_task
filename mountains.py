@@ -5,11 +5,14 @@ import os
 import sys
 import csv
 import datetime
+import re
+import string
 from optparse import OptionParser
 
 import requests
 
-
+UTF8  = 'UTF-8'
+UTF16 = 'UTF-16'
 
 class Formatter():
   def format(self,data):
@@ -25,31 +28,56 @@ class Fetch():
     self.url       = url
     self.is_stream = False
     self.request   = None
+    self.unicode   = UTF8
 
     if self.url:
-      self.request = self.get(self.url)
+      self.get(self.url)
 
   def get(self, url):
-    return requests.get(url, data={'track': 'requests'}, stream=self.is_stream)
+    self.request = requests.get(url, data={'track': 'requests'}, stream=self.is_stream)
+    self.unicode = self.request.encoding 
+    print type(self.request.text), self.unicode
+
+
 
   
 class Stream(Fetch):
   def __init__(self, url=None):
     Fetch.__init__(self,url)
     self.is_stream = True
+    self.stream = self.request.iter_lines()
 
   def __iter__(self):
-    for line in self.request.iter_lines():
+    for line in self.stream:
       if line:
-        yield line
+        yield unicode(line)
+  
+  def next(self):
+    self.stream.next()
 
 
-class MountainAltStream():
 
-  def __init__(self):
-    csv_reader = csv.reader()
+
+class MountainTask():
+  
+
+  def execute(self, stream):
+    DELIM = ','
+    formatter = MountainAltFormatter()
+
+    stream.next() # Skip header
+    for mountain in stream:
+      # print mountain
+      # print type(mountain), isinstance(mountain, unicode), mountain
+      # data = mountain.split(DELIM)
+      print type(mountain), mountain
+      # print data
+      # name     = data[1]
+      # altitude = data[5] if data[5] != 'null' or data[5] != u"null" else 'uknown'
+      # print formatter.format([name,altitude])
     
-    
+
+
 
 
 def header():
@@ -59,15 +87,21 @@ def header():
 
 def execute((options, args)):
 
-  f = MountainAltFormatter()
-  print f.format(["test",'2423'])
-  print f.format(["1test",'uknown'])
+  
+  # print f.format(["test",'2423'])
+  # print f.format(["1test",'uknown'])
 
   print header()
 
-  m_stream = Stream(args[0])
-  for m in m_stream:
-    print m
+  mountain_stream = Stream(args[0])
+  mountains = MountainTask()
+  mountains.execute(mountain_stream)
+
+
+
+  
+
+  
 
   # https://s3.amazonaws.com/miscs.random/mountains-1.csv
 
