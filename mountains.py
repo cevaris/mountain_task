@@ -63,11 +63,12 @@ class CSVParser(object):
     DELIM = u','
     REGEX = re.compile(r"%s" % DELIM, re.UNICODE)
 
-    def __init__(self, head=None):
+    def __init__(self):
+        self.head = None
+        
+    def set_header(self, head):
         if head and (type(head) == str):
             self.head = self.REGEX.split(head)
-        else:
-            self.head = None
 
     def parse(self, document):
         raise NotImplementedError
@@ -169,6 +170,7 @@ class MountainTask(Task):
     def __init__(self, stream):
         self.stream = stream
         self.formatter = MountainAltFormatter()
+        self.csv_parser = CSVParser()
         self.execute()
         
     def output(self, batch_messages):
@@ -187,8 +189,8 @@ class MountainTask(Task):
 
     def execute(self):
         
+        self.csv_parser.set_header(self.stream.next())
         
-        self.csv_parser = CSVParser(self.stream.next())
         
         thread_pool = ThreadPool(25)        
         max_count = 1000
