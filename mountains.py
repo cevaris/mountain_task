@@ -14,7 +14,6 @@ from optparse import OptionParser
 from Queue import Queue
 from threading import Thread
 
-
 import requests
 
 logging.basicConfig(level=logging.ERROR)
@@ -24,37 +23,6 @@ ALTITUDE = 'Altitude (m)'
 NAME = 'Name'
 NULL = u"null"
 UKNOWN = u'unknown'
-
-class Worker(Thread):
-    """
-    Thread executing tasks from a given tasks queue
-    """
-    def __init__(self, tasks):
-        Thread.__init__(self)
-        self.tasks = tasks
-        self.daemon = True
-        self.start()
-    
-    def run(self):
-        while True:
-            func, args, kargs = self.tasks.get()
-            try: func(*args, **kargs)
-            except Exception, e: print e
-            self.tasks.task_done()
-
-class ThreadPool:
-    """Pool of threads consuming tasks from a queue"""
-    def __init__(self, num_threads):
-        self.tasks = Queue(num_threads)
-        for _ in range(num_threads): Worker(self.tasks)
-
-    def add_task(self, func, *args, **kargs):
-        """Add a task to the queue"""
-        self.tasks.put((func, args, kargs))
-
-    def wait_completion(self):
-        """Wait for completion of all the tasks in the queue"""
-        self.tasks.join()
 
 
 class CSVParser(object):
@@ -89,7 +57,6 @@ class CSVParser(object):
         return result
 
 
-
 class Formatter(object):
     """Base class for creating custom string formats"""
     __metaclass__ = abc.ABCMeta
@@ -102,6 +69,7 @@ class Formatter(object):
 class MountainAltFormatter(Formatter):
     def format(self, data):
         return "%s has an altitude of %s meters." % (data[0], data[1])
+
 
 class Fetch(object):
     """Interface for making HTTP GET commands to a given URL"""
@@ -134,6 +102,10 @@ class RequestsFetch(Fetch):
         except requests.exceptions.ConnectionError as e:
             LOG.error("Connection Error: %s" % self.url)
             raise
+        except requests.exceptions.MissingSchema as e:
+            LOG.error("Invalid URL Error: %s" % self.url)
+            raise
+
 
         return self.request
 
@@ -148,7 +120,7 @@ class Stream(RequestsFetch):
 
 
     def __iter__(self):
-        """Generator for streaming each line of Requests.GET"""
+        """Unicode generator for streaming each line of Requests.GET"""
         for line in self.stream:
             if line:
                 yield unicode(line)
@@ -158,6 +130,8 @@ class Stream(RequestsFetch):
 
 
 class BatchWriter():
+    """Caches writing into chunks/batches. Saves time calling write for every result"""
+
     BATCH_SIZE = 1024
 
     def __init__(self):
@@ -183,8 +157,6 @@ class Task(object):
         pass
 
 
-
-
 class MountainTask(Task):
 
     def __init__(self, stream):
@@ -199,6 +171,9 @@ class MountainTask(Task):
         Parses and prints out CSV Mountain data in a formatted manner.
         """
         self.csv_parser.set_header(self.stream.next())
+
+        # Print time stamp header
+        print timestamp()
         
         for mountain_data in self.stream:
 
@@ -208,22 +183,27 @@ class MountainTask(Task):
             altitude = data[ALTITUDE] if data[ALTITUDE] != NULL else UKNOWN
             self.batch_writer.append("%s" % self.formatter.format([name, altitude]))
 
+        # Write out any remainder items to stdout
         self.batch_writer.flush()
 
 
-def header():
+def timestamp():
     current_time = datetime.datetime.now()
     return current_time.strftime(u"%Y-%m-%d %H:%M:%S (%A)\n")
 
 
-def main((options, args)):
-    print header()
+def main(parser, (options, args)):
+    
+    if len(args) < 1:
+        parser.error("Missing URL, example '%s https://s3.amazonaws.com/miscs.random/mountains-C.txt'" % sys.argv[0])
+    if len(args) > 1:
+        parser.error("Invalid Arguments: %s" % args[1:])
 
     mountain_stream = Stream(args[0])
     mountains = MountainTask(mountain_stream)
 
 if __name__ == "__main__":
-    parser = OptionParser()
-    usage = "usage: %prog [options] URL"
 
-    main(parser.parse_args())
+    parser = OptionParser(usage = "usage: %prog URL")
+
+    main(parser, parser.parse_args())
