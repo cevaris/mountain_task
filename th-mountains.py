@@ -25,6 +25,7 @@ ALTITUDE = 'Altitude (m)'
 NAME = 'Name'
 NULL = u"null"
 UKNOWN = u'unknown'
+EXAMPLE_URL = 'https://s3.amazonaws.com/miscs.random/mountains-C.txt'
 
 class Worker(Thread):
     """
@@ -220,7 +221,7 @@ def timestamp():
 def main(parser, (options, args)):
     
     if len(args) < 1:
-        parser.error("Missing URL, example '%s https://s3.amazonaws.com/miscs.random/mountains-C.txt'" % sys.argv[0])
+        parser.error("Missing URL, example '%s %s'" % (sys.argv[0], EXAMPLE_URL))
     if len(args) > 1:
         parser.error("Invalid Arguments: %s" % args[1:])
 

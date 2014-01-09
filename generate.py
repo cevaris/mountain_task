@@ -15,7 +15,7 @@ def generate():
 
   with open('mountains-1MM.txt', 'w') as writer:
     writer.write("GeoNameId,Name,Country,Latitude,Longitude,Altitude (m)\n")
-    for i in xrange(1,100):
+    for i in xrange(1,1000000):
       writer.write("%d," % (random.randint(1,2000000) + 5000000))
       writer.write("%s," % (random_alpha(random.randint(4,10)).capitalize()+' '+random_alpha(random.randint(4,10)).capitalize()))
       writer.write("%s," % (random_alpha(2).upper()))

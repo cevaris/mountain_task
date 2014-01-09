@@ -23,6 +23,7 @@ ALTITUDE = 'Altitude (m)'
 NAME = 'Name'
 NULL = u"null"
 UKNOWN = u'unknown'
+EXAMPLE_URL = 'https://s3.amazonaws.com/miscs.random/mountains-C.txt'
 
 
 class CSVParser(object):
@@ -36,7 +37,7 @@ class CSVParser(object):
 
     def __init__(self):
         self.head = None
-        
+
     def set_header(self, head):
         if head and (type(head) == str):
             self.head = self.REGEX.split(head)
@@ -58,7 +59,7 @@ class CSVParser(object):
 
 
 class Formatter(object):
-    """Base class for creating custom string formats"""
+    """Interface for creating custom string formats"""
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
@@ -92,12 +93,12 @@ class RequestsFetch(Fetch):
 
     def get(self, url):
         self.url = url
-        
         try:
-            self.request = requests.get(url, stream=self.is_stream)        
+            self.request = requests.get(url, stream=self.is_stream)
             self.request.raise_for_status()
         except requests.exceptions.HTTPError as e:
-            LOG.error("HTTP Error %s: %s" % (self.request.status_code, self.url))
+            LOG.error("HTTP Error %s: %s" % (
+                self.request.status_code, self.url))
             raise
         except requests.exceptions.ConnectionError as e:
             LOG.error("Connection Error: %s" % self.url)
@@ -105,7 +106,6 @@ class RequestsFetch(Fetch):
         except requests.exceptions.MissingSchema as e:
             LOG.error("Invalid URL Error: %s" % self.url)
             raise
-
 
         return self.request
 
@@ -118,7 +118,6 @@ class Stream(RequestsFetch):
         self.get(url)
         self.stream = self.request.iter_lines()
 
-
     def __iter__(self):
         """Unicode generator for streaming each line of Requests.GET"""
         for line in self.stream:
@@ -130,7 +129,10 @@ class Stream(RequestsFetch):
 
 
 class BatchWriter():
-    """Caches writing into chunks/batches. Saves time calling write for every result"""
+    """
+    Caches writing into chunks/batches.
+    Saves time calling write for every result
+    """
 
     BATCH_SIZE = 1024
 
@@ -174,14 +176,13 @@ class MountainTask(Task):
 
         # Print time stamp header
         print timestamp()
-        
-        for mountain_data in self.stream:
 
+        for mountain_data in self.stream:
             data = self.csv_parser.parse_line(mountain_data)
-       
             name = data[NAME]
             altitude = data[ALTITUDE] if data[ALTITUDE] != NULL else UKNOWN
-            self.batch_writer.append("%s\n" % self.formatter.format([name, altitude]))
+            message = "%s\n" % self.formatter.format([name, altitude])
+            self.batch_writer.append(message)
 
         # Write out any remainder items to stdout
         self.batch_writer.flush()
@@ -193,9 +194,9 @@ def timestamp():
 
 
 def main(parser, (options, args)):
-    
     if len(args) < 1:
-        parser.error("Missing URL, example '%s https://s3.amazonaws.com/miscs.random/mountains-C.txt'" % sys.argv[0])
+        parser.error("Missing URL, example '%s %s'" % (
+            sys.argv[0], EXAMPLE_URL))
     if len(args) > 1:
         parser.error("Invalid Arguments: %s" % args[1:])
 
@@ -204,6 +205,6 @@ def main(parser, (options, args)):
 
 if __name__ == "__main__":
 
-    parser = OptionParser(usage = "usage: %prog URL")
+    parser = OptionParser(usage="usage: %prog URL")
 
     main(parser, parser.parse_args())
