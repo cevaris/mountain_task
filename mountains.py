@@ -23,7 +23,7 @@ ALTITUDE = 'Altitude (m)'
 NAME = 'Name'
 NULL = u"null"
 UKNOWN = u'unknown'
-EXAMPLE_URL = 'https://s3.amazonaws.com/miscs.random/mountains-C.txt'
+EXAMPLE_URL = 'https://s3.amazonaws.com/miscs.random/mountains-C.csv'
 
 
 class CSVParser(object):
