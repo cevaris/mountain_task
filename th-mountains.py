@@ -16,7 +16,6 @@ from Queue import Queue
 from threading import Thread
 import threading
 
-
 import requests
 
 logging.basicConfig(level=logging.ERROR)
